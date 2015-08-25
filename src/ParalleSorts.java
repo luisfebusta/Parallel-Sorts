@@ -2,22 +2,18 @@ import java.util.Random;
 
 public class ParalleSorts {
 
-    public static void quickSort(Comparable [] a)
+    public static <T extends Comparable<T>> void quickSort(T [] a)
     {
         //shuffle input array to randomize input.
         //this prevents worse case scenario where the array is already sorted
         shuffle(a);
         int cores = Runtime.getRuntime().availableProcessors();
         
-        quickSort(a,0,a.length-1, cores);
-        
+        quickSort(a,0,a.length-1, cores);        
     }
     
-    private static void quickSort(Comparable [] a, int start, int end, int cores)
+    private static <T extends Comparable<T>> int split(T[] a, int start, int end)
     {
-        if(start >= end)
-            return;
-        
         //pick 1st item as pivot
         int pivot = start;
         int i = start+1;
@@ -45,27 +41,30 @@ public class ParalleSorts {
         }
         
         swap(a, pivot, j);
+        return j;
+    }
+    
+    private static <T extends Comparable<T>>void quickSort(T [] a, int start, int end, int cores)
+    {
+        if(start >= end)
+            return;
         
-        final int x = j;
+        final int x = split(a, start, end);
         //HERE COMES THE FUN!!!!
         if (cores > 1)
         {
+            //Anonymous class implementation of quick sort thread. 
             Thread thr1 =  new Thread(){
                 public void run()
                 {
 
-                    quickSort(a, start, x-1, cores/2);
+                    quickSort(a, start, x-1, 1);
                 }
             };
             
-            Thread thr2 = new Thread(){
-                public void run()
-                {
-                    quickSort(a, x + 1, end, cores/2);
-                    
-                }
-            };
-            
+            //different way of doing the above
+            Thread thr2 = new Thread(new quickSortThread<T>(a, x + 1, end, 1));
+              
             thr1.start();
             thr2.start();
             try {
@@ -97,14 +96,14 @@ public class ParalleSorts {
     }
     
     //used to shuffle input array to quicksort.
-    private static void shuffle(Comparable [] a)
+    private static <T extends Comparable<T>> void shuffle(T [] a)
     {
         Random random = new Random();
         int index = 0;
         int swap;
         int max = a.length;
         
-        Comparable tmp;
+        T tmp;
         
         do{
             swap = random.nextInt(max) + index;
@@ -115,16 +114,38 @@ public class ParalleSorts {
             max--;
         } while (index < a.length);
         
+        
+        
     }
     
-    
+    private static class quickSortThread<T1 extends Comparable<T1>> implements Runnable {
+
+            T1 []a;
+            int start;
+            int end;
+            int cores;
+            
+            quickSortThread(T1 [] a, int start, int end, int cores)
+            {
+                this.a = a;
+                this.start = start;
+                this.end = end;
+                this.cores = cores;
+            }
+            
+            public void run() {
+                // Run static method quick sort defined in outer class;
+                quickSort(a, start, end, cores);
+            }
+            
+    }
     
     public static void main(String[] args) {
         // TODO Auto-generated method stub
         
         Integer a[] = {5, 6, 7, 8, 9 ,44, 22, 11, 23, 31, 8, 6, 8, 9, 10, 11, -1, 67, 88, -2, -5, 100};
         
-        System.out.print("Before Sort:");
+        System.out.print("Before Quick Sort:");
         for (Integer i: a)
         {
             System.out.print(" " + i);
@@ -133,10 +154,11 @@ public class ParalleSorts {
         
         quickSort(a);
         System.out.println();
-        System.out.print("After Sort:");
+        System.out.print("After Quick Sort:");
         for (Integer i: a)
         {
             System.out.print(" " + i);
-        }    }
+        }           
+    }
 
 }
