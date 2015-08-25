@@ -1,6 +1,108 @@
+import java.util.Arrays;
 import java.util.Random;
 
 public class ParalleSorts {
+    
+    public static <T extends Comparable<T>> void mergeSort(T [] a)
+    {
+        //ugly cast needed due to inability to create generic array.
+        @SuppressWarnings("unchecked")
+        T [] tmp = (T[])new Comparable[a.length]; 
+        
+        for (int i = 0; i < a.length; i++)
+        {
+            tmp[i] = a[i];
+        }
+        int cores = Runtime.getRuntime().availableProcessors();
+        mergeSort(a, tmp, 0, a.length - 1, cores);
+    }
+    
+    private static <T extends Comparable<T>> void 
+    mergeSort(T [] a, T [] tmp, int start, int end, int cores)
+    {
+        if (start >= end)
+            return;
+        
+        int mid = (end - start) /2 + start;
+        
+        
+        if (cores  > 1)
+        {
+            Thread th1 = new Thread(new MergeSortThread<T>(tmp, a, start, mid, cores/2));
+            Thread th2 = new Thread(new MergeSortThread<T>(tmp, a, mid + 1, end, cores/2));
+            th1.start();
+            th2.start();
+            try {
+                th1.join();
+                th2.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }            
+        }
+        else
+        {
+            mergeSort(tmp, a, start, mid, cores/2);
+            mergeSort(tmp, a, mid+1, end, cores/2);
+        }
+        
+        merge(tmp, a, start, mid, end);
+    }
+    
+    private static <T extends Comparable<T>> void merge(T[] src, T[] target, int start, int mid, int end)
+    {
+        //merges from src array into target array;
+        
+        int i = start;
+        int j = mid+1;
+        
+        while (i < mid + 1 && j < end+1)
+        {
+            if(src[i].compareTo(src[j]) < 0)
+            {
+                target[start++] = src[i++];
+            }
+            else
+            {
+                target[start++] = src[j++];
+            }
+        }
+        
+        while (i < mid + 1 )
+        {
+            target[start++] = src[i++];
+        }
+        
+        while (j < end + 1)
+        {
+            target[start++] = src[j++];
+        }
+    }
+    
+    private static class MergeSortThread<T extends Comparable<T>> implements Runnable
+    {
+        T [] a;
+        T [] tmp;
+        int start;
+        int end;
+        int cores;
+        
+        MergeSortThread(T[] a, T[] tmp, int start, int end, int cores)
+        {
+            this.a = a;
+            this.tmp = tmp;
+            this.start = start;
+            this.end = end;
+            this.cores = cores;
+        }
+
+        @Override
+        public void run() {
+            
+            mergeSort(a, tmp, start, end, cores);
+            
+        }
+        
+    }
 
     public static <T extends Comparable<T>> void quickSort(T [] a)
     {
@@ -63,7 +165,7 @@ public class ParalleSorts {
             };
             
             //different way of doing the above
-            Thread thr2 = new Thread(new quickSortThread<T>(a, x + 1, end, 1));
+            Thread thr2 = new Thread(new QuickSortThread<T>(a, x + 1, end, 1));
               
             thr1.start();
             thr2.start();
@@ -118,14 +220,14 @@ public class ParalleSorts {
         
     }
     
-    private static class quickSortThread<T1 extends Comparable<T1>> implements Runnable {
+    private static class QuickSortThread<T extends Comparable<T>> implements Runnable {
 
-            T1 []a;
+            T []a;
             int start;
             int end;
             int cores;
             
-            quickSortThread(T1 [] a, int start, int end, int cores)
+            QuickSortThread(T [] a, int start, int end, int cores)
             {
                 this.a = a;
                 this.start = start;
@@ -145,8 +247,10 @@ public class ParalleSorts {
         
         Integer a[] = {5, 6, 7, 8, 9 ,44, 22, 11, 23, 31, 8, 6, 8, 9, 10, 11, -1, 67, 88, -2, -5, 100};
         
-        System.out.print("Before Quick Sort:");
-        for (Integer i: a)
+        Integer b[] = Arrays.copyOf(a, a.length);
+        
+        System.out.print("Before Sort:");
+        for (Integer i: b)
         {
             System.out.print(" " + i);
         }
@@ -158,7 +262,15 @@ public class ParalleSorts {
         for (Integer i: a)
         {
             System.out.print(" " + i);
-        }           
+        }
+        System.out.println();
+        
+        mergeSort(b);
+        System.out.print("After Merge Sort:");
+        for (Integer i: b)
+        {
+            System.out.print(" " + i);
+        }      
     }
 
 }
